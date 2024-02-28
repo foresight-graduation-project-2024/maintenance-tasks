@@ -7,6 +7,7 @@ import com.foresight.taskmanagmentservicebackend.taskmanagmentservicebackend.dto
 import com.foresight.taskmanagmentservicebackend.taskmanagmentservicebackend.dto.TeamSummary;
 import com.foresight.taskmanagmentservicebackend.taskmanagmentservicebackend.exception.ErrorCode;
 import com.foresight.taskmanagmentservicebackend.taskmanagmentservicebackend.exception.RuntimeErrorCodedException;
+import com.foresight.taskmanagmentservicebackend.taskmanagmentservicebackend.model.Member;
 import com.foresight.taskmanagmentservicebackend.taskmanagmentservicebackend.model.Notification;
 import com.foresight.taskmanagmentservicebackend.taskmanagmentservicebackend.model.NotificationMessages;
 import com.foresight.taskmanagmentservicebackend.taskmanagmentservicebackend.model.Task;
@@ -126,6 +127,18 @@ public class TeamService {
     public void deleteTeamTask(String teamId, String taskId) {
         TeamCollection team= teamCollectionRepo.findById(teamId).orElseThrow(()->new RuntimeErrorCodedException(ErrorCode.TEAM_NOT_FOUND_EXCEPTION));
         team.getTeamTasks().removeIf(task -> Objects.equals(task.getTaskId(), taskId));
+        teamCollectionRepo.save(team);
+    }
+    public void addTeamMember(Member member, String teamId){
+        TeamCollection team= teamCollectionRepo.findById(teamId).orElseThrow(()->new RuntimeErrorCodedException(ErrorCode.TEAM_NOT_FOUND_EXCEPTION));
+        if(team.getMembers()==null)
+            team.setMembers(new ArrayList<>());
+        team.getMembers().add(member);
+        teamCollectionRepo.save(team);
+    }
+    public void deleteTeamMember(String MemberId,String teamId){
+        TeamCollection team= teamCollectionRepo.findById(teamId).orElseThrow(()->new RuntimeErrorCodedException(ErrorCode.TEAM_NOT_FOUND_EXCEPTION));
+        team.getMembers().removeIf(member -> Objects.equals(member.getMemberId(), MemberId));
         teamCollectionRepo.save(team);
     }
 }

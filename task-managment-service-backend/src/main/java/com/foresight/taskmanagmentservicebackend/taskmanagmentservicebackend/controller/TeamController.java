@@ -1,6 +1,7 @@
 package com.foresight.taskmanagmentservicebackend.taskmanagmentservicebackend.controller;
 import com.foresight.taskmanagmentservicebackend.taskmanagmentservicebackend.dto.TeamSearchCriteria;
 import com.foresight.taskmanagmentservicebackend.taskmanagmentservicebackend.dto.TeamSummary;
+import com.foresight.taskmanagmentservicebackend.taskmanagmentservicebackend.model.Member;
 import com.foresight.taskmanagmentservicebackend.taskmanagmentservicebackend.service.TeamService;
 import com.foresight.taskmanagmentservicebackend.taskmanagmentservicebackend.collection.TeamCollection;
 import com.foresight.taskmanagmentservicebackend.taskmanagmentservicebackend.dto.CreateTeamRequest;
@@ -47,5 +48,13 @@ public class TeamController {
     @GetMapping("/summaries/search")
     public Page<TeamSummary> searchTeamsSummary(Pageable pageable, TeamSearchCriteria criteria){
         return teamService.searchSummaries(pageable,criteria);
+    }
+    @PostMapping("/member/{id}")
+    public void addTeamMember(@RequestBody Member member,@PathVariable String id){
+        teamService.addTeamMember(member,id);
+    }
+    @DeleteMapping("/member/{teamId}/{memberId}")
+    public void addTeamMember(@PathVariable String memberId,@PathVariable String teamId){
+        teamService.deleteTeamMember(memberId,teamId);
     }
 }
