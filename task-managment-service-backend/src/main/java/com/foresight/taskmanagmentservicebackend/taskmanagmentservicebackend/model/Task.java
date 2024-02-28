@@ -14,7 +14,7 @@ public class Task {
     private String description;
     private StatusEnum Status;
     private PriorityEnum priority;
-    private String label;
+//    private String label;
     private LocalDateTime startDate;
     private LocalDateTime endDate;
     private Member creator;

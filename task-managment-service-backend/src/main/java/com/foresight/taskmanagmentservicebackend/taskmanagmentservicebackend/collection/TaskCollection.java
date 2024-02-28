@@ -25,7 +25,6 @@ public class TaskCollection {
     private String description;
     private StatusEnum status;
     private PriorityEnum priority;
-    private String label;
     private LocalDateTime startDate;
     private LocalDateTime endDate;
     private Member creator;

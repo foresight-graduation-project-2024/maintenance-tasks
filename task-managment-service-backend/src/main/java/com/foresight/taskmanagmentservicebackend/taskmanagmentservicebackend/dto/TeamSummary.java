@@ -14,5 +14,6 @@ public class TeamSummary {
         private String teamId;
         private String name;
         private String signature;
+        private String description;
         private Member teamLeader;
 }

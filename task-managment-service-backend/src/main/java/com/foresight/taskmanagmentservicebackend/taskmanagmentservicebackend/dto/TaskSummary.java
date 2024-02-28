@@ -14,10 +14,10 @@ public class TaskSummary {
     @Id
     private String taskId;
     private String title;
-    private StatusEnum status;
-    private PriorityEnum priority;
-    private String label;
-    private LocalDateTime startDate;
-    private LocalDateTime endDate;
-    private Member creator;
+    private String summary;
+//    private StatusEnum status;
+//    private PriorityEnum priority;
+//    private LocalDateTime startDate;
+//    private LocalDateTime endDate;
+//    private Member creator;
 }

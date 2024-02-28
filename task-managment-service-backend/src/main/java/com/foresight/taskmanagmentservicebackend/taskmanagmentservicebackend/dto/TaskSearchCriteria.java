@@ -14,7 +14,7 @@ public class TaskSearchCriteria {
     private String title;
     private StatusEnum status;
     private PriorityEnum priority;
-    private String label;
+//    private String label;
     private LocalDateTime startDate;
     private LocalDateTime endDate;
     private String creatorFirstname;

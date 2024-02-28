@@ -25,4 +25,5 @@ public class UserInfo {
     @Indexed(unique = true)
     private String email;
     private String role;
+    private boolean enabled;
 }

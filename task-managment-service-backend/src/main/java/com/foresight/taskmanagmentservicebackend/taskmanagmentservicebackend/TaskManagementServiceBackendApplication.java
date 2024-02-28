@@ -7,7 +7,6 @@ import org.springframework.data.mongodb.repository.config.EnableMongoRepositorie
 
 @SpringBootApplication
 @EnableRabbit
-
 public class TaskManagementServiceBackendApplication {
 
     public static void main(String[] args) {
