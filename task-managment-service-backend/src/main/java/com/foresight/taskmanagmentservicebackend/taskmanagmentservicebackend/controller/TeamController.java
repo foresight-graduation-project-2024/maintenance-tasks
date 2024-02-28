@@ -54,7 +54,7 @@ public class TeamController {
         teamService.addTeamMember(member,id);
     }
     @DeleteMapping("/member/{teamId}/{memberId}")
-    public void addTeamMember(@PathVariable String memberId,@PathVariable String teamId){
+    public void deleteTeamMember(@PathVariable String memberId,@PathVariable String teamId){
         teamService.deleteTeamMember(memberId,teamId);
     }
 }
