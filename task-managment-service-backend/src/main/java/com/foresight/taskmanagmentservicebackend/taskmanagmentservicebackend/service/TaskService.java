@@ -49,15 +49,16 @@ public class TaskService {
         taskCollection.setTitle(getUniqueTaskTitle(teamId,nextSequence));
         taskCollection = taskCollectionRepo.save(taskCollection);
         Task task1 = mapper.taskCollectionToTask(taskCollection);
-        userService.addTask(task1, taskRequest.getAssignee().getMemberId());
+        if(taskRequest.getAssignee()!=null)
+         userService.addTask(task1, taskRequest.getAssignee().getMemberId());
         teamService.addTask(task1, teamId);
         updateSequence(teamId, nextSequence + 1);
-        notificationService.pushUserNotification(taskRequest.getAssignee().getMemberId(), Notification.builder()
-                .notificationId(UUID.randomUUID().toString())
-                .receiver(taskRequest.getAssignee().getMemberId())
-                .content(NotificationMessages.TASK_CREATED.getMessage(taskRequest.getCreator().getFirstname()+" "+taskRequest.getCreator().getLastname()))
-                .issuedDate(new Date())
-                .build());
+//        notificationService.pushUserNotification(taskRequest.getAssignee().getMemberId(), Notification.builder()
+//                .notificationId(UUID.randomUUID().toString())
+//                .receiver(taskRequest.getAssignee().getMemberId())
+//              .content(NotificationMessages.TASK_CREATED.getMessage(taskRequest.getCreator().getFirstname()+" "+taskRequest.getCreator().getLastname()))
+//                .issuedDate(new Date())
+//                .build());
     }
 
     public void editTask(TaskCollection taskCollection, String teamId) {

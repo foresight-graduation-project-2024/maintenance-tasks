@@ -10,7 +10,7 @@ public enum ErrorCode {
     DEACTIVATED_ACCOUNT(6),
     UNKNOWN_SERVER_ERROR(100),
     TEAM_NOT_FOUND_EXCEPTION(8),
-    
+
     TASK_NOT_FOUND_EXCEPTION(9);
 
     private final int code;
