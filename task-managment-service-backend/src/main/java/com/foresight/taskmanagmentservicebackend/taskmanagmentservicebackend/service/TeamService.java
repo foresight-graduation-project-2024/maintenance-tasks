@@ -69,12 +69,14 @@ public class TeamService {
     }
     public void updateTeam(TeamCollection team){
         TeamCollection oldTeam= teamCollectionRepo.findById(team.getTeamId()).orElseThrow(()->new RuntimeErrorCodedException(ErrorCode.TEAM_NOT_FOUND_EXCEPTION));
-        userService.addOrUpdateUsersTeams(team);
+        if(team.getMembers()!=null) {
+            userService.addOrUpdateUsersTeams(team);
+            oldTeam.setMembers(team.getMembers());
+        }
         oldTeam.setName(team.getName());
         oldTeam.setDescription(team.getDescription());
         oldTeam.setTeamLeader(team.getTeamLeader());
-        oldTeam.setMembers(team.getMembers());
-        oldTeam.setSignature(team.getSignature());
+//        oldTeam.setSignature(team.getSignature());
         teamCollectionRepo.save(oldTeam);
 //        notificationService.pushTeamNotification(team.getTeamId(), Notification.builder()
 //                .notificationId(UUID.randomUUID().toString())

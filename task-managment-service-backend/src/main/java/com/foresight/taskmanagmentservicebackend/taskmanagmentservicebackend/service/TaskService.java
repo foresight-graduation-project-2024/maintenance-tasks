@@ -65,15 +65,16 @@ public class TaskService {
         taskCollectionRepo.findById(taskCollection.getTaskId()).orElseThrow(() -> new RuntimeErrorCodedException(ErrorCode.TASK_NOT_FOUND_EXCEPTION));
         taskCollectionRepo.save(taskCollection);
         Task task = mapper.taskCollectionToTask(taskCollection);
-        userService.editTask(task);
         teamService.editTask(task, teamId);
-
-        notificationService.pushUserNotification(taskCollection.getAssignee().getMemberId(), Notification.builder()
-                .notificationId(UUID.randomUUID().toString())
-                .receiver(taskCollection.getAssignee().getMemberId())
-                .content(NotificationMessages.TASK_UPDATED.getMessage(taskCollection.getTitle()))
-                .issuedDate(new Date())
-                .build());
+        if(taskCollection.getAssignee()!=null) {
+            userService.editTask(task);
+            notificationService.pushUserNotification(taskCollection.getAssignee().getMemberId(), Notification.builder()
+                    .notificationId(UUID.randomUUID().toString())
+                    .receiver(taskCollection.getAssignee().getMemberId())
+                    .content(NotificationMessages.TASK_UPDATED.getMessage(taskCollection.getTitle()))
+                    .issuedDate(new Date())
+                    .build());
+        }
     }
 
     public TaskCollection getTask(String id) {
