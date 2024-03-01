@@ -128,16 +128,17 @@ public class TaskService {
     }
 
     public boolean deleteTask(String teamId, String taskId) {
-        TaskCollection taskCollection= taskCollectionRepo.findById(taskId).orElseThrow(()->new RuntimeException("task is not found"));
-        userService.deleteTask(taskCollection.getAssignee().getMemberId(),taskId);
+        TaskCollection taskCollection= taskCollectionRepo.findById(taskId).orElseThrow(()->new RuntimeErrorCodedException(ErrorCode.TASK_NOT_FOUND_EXCEPTION));
+        if(taskCollection.getAssignee()!=null)
+         userService.deleteTask(taskCollection.getAssignee().getMemberId(),taskId);
         teamService.deleteTeamTask(teamId,taskId);
         taskCollectionRepo.deleteById(taskId);
-        notificationService.pushUserNotification(taskCollection.getAssignee().getMemberId(), Notification.builder()
-                .notificationId(UUID.randomUUID().toString())
-                .receiver(taskCollection.getAssignee().getMemberId())
-                .content(NotificationMessages.TASK_DELETED.getMessage(taskCollection.getTitle()))
-                .issuedDate(new Date())
-                .build());
+//        notificationService.pushUserNotification(taskCollection.getAssignee().getMemberId(), Notification.builder()
+//                .notificationId(UUID.randomUUID().toString())
+//                .receiver(taskCollection.getAssignee().getMemberId())
+//                .content(NotificationMessages.TASK_DELETED.getMessage(taskCollection.getTitle()))
+//                .issuedDate(new Date())
+//                .build());
         return true;
     }
 

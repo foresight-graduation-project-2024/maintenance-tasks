@@ -11,12 +11,13 @@ import java.time.LocalDateTime;
 public class Task {
     private String taskId;
     private String title;
-    private String description;
+//    private String description;
+    private String summary;
     private StatusEnum Status;
     private PriorityEnum priority;
 //    private String label;
-    private LocalDateTime startDate;
-    private LocalDateTime endDate;
-    private Member creator;
+//    private LocalDateTime startDate;
+//    private LocalDateTime endDate;
+//    private Member creator;
     private Member assignee;
 }
