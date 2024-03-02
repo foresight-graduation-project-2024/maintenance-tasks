@@ -107,4 +107,11 @@ public class UserService {
         List<Task> tasks=aggregate.getMappedResults().get(0).getTasks();
         return new PageImpl<>(tasks,pageable,count);
     }
+
+    public void addUser(TeamCollection teamCollection) {
+        Team team= teamMapper.teamCollectionToTeam(teamCollection);
+        Query query = new Query(where("userId").is(teamCollection.getTeamLeader().getMemberId()));
+        Update update = new Update().addToSet("teams", team);
+        mongoTemplate.upsert(query,update,User.class);
+    }
 }

@@ -11,7 +11,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.web.bind.annotation.*;
 
-
+import java.util.List;
 
 
 @RestController
@@ -50,8 +50,8 @@ public class TeamController {
         return teamService.searchSummaries(pageable,criteria);
     }
     @PostMapping("/member/{id}")
-    public void addTeamMember(@RequestBody Member member,@PathVariable String id){
-        teamService.addTeamMember(member,id);
+    public void addTeamMember(@RequestBody List<Member> members, @PathVariable String id){
+        teamService.addTeamMember(members,id);
     }
     @DeleteMapping("/member/{teamId}/{memberId}")
     public void deleteTeamMember(@PathVariable String memberId,@PathVariable String teamId){

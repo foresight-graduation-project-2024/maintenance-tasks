@@ -1,7 +1,9 @@
 package com.foresight.taskmanagmentservicebackend.taskmanagmentservicebackend.service;
 
+import com.foresight.taskmanagmentservicebackend.taskmanagmentservicebackend.collection.TaskCollection;
 import com.foresight.taskmanagmentservicebackend.taskmanagmentservicebackend.collection.TaskSequence;
 import com.foresight.taskmanagmentservicebackend.taskmanagmentservicebackend.collection.TeamCollection;
+import com.foresight.taskmanagmentservicebackend.taskmanagmentservicebackend.collection.User;
 import com.foresight.taskmanagmentservicebackend.taskmanagmentservicebackend.dto.CreateTeamRequest;
 import com.foresight.taskmanagmentservicebackend.taskmanagmentservicebackend.dto.TeamSearchCriteria;
 import com.foresight.taskmanagmentservicebackend.taskmanagmentservicebackend.dto.TeamSummary;
@@ -12,11 +14,14 @@ import com.foresight.taskmanagmentservicebackend.taskmanagmentservicebackend.mod
 import com.foresight.taskmanagmentservicebackend.taskmanagmentservicebackend.model.NotificationMessages;
 import com.foresight.taskmanagmentservicebackend.taskmanagmentservicebackend.model.Task;
 import com.foresight.taskmanagmentservicebackend.taskmanagmentservicebackend.mapper.TeamMapper;
+import com.foresight.taskmanagmentservicebackend.taskmanagmentservicebackend.repo.TaskCollectionRepo;
 import com.foresight.taskmanagmentservicebackend.taskmanagmentservicebackend.repo.TaskSequenceRepo;
 import com.foresight.taskmanagmentservicebackend.taskmanagmentservicebackend.repo.TeamCollectionRepo;
+import com.foresight.taskmanagmentservicebackend.taskmanagmentservicebackend.repo.UserRepo;
 import lombok.AllArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Criteria;
@@ -24,6 +29,8 @@ import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
+
+import static org.springframework.data.mongodb.core.query.Criteria.where;
 
 
 @Service
@@ -35,9 +42,13 @@ public class TeamService {
     private UserService userService;
     private NotificationService notificationService;
     private TaskSequenceRepo taskSequenceRepo;
+    private TaskCollectionRepo taskCollectionRepo;
+    private UserRepo userRepo;
     public void createTeam(CreateTeamRequest request){
         TeamCollection team = teamCollectionRepo.save(mapper.createTeamRequestToTeamCollection(request));
-        userService.addOrUpdateUsersTeams(team);
+        if(request.getMembers()!=null && !request.getMembers().isEmpty())
+         userService.addOrUpdateUsersTeams(team);
+        userService.addUser(team);
         taskSequenceRepo.save(new TaskSequence(team.getTeamId(), 1L));
         notificationService.pushTeamNotification(team.getTeamId(), Notification.builder()
                 .notificationId(UUID.randomUUID().toString())
@@ -58,6 +69,7 @@ public class TeamService {
     public void deleteTeam(String teamId){
         TeamCollection teamCollection=teamCollectionRepo.findById(teamId).orElseThrow(()->new RuntimeErrorCodedException(ErrorCode.TEAM_NOT_FOUND_EXCEPTION));
         userService.deleteUserTeam(teamId);
+        deleteTeamTasks(teamId);
         taskSequenceRepo.deleteById(teamId);
         teamCollectionRepo.deleteById(teamId);
 //        notificationService.pushTeamNotification(teamId, Notification.builder()
@@ -131,16 +143,50 @@ public class TeamService {
         team.getTeamTasks().removeIf(task -> Objects.equals(task.getTaskId(), taskId));
         teamCollectionRepo.save(team);
     }
-    public void addTeamMember(Member member, String teamId){
+    public void addTeamMember(List<Member> members, String teamId){
         TeamCollection team= teamCollectionRepo.findById(teamId).orElseThrow(()->new RuntimeErrorCodedException(ErrorCode.TEAM_NOT_FOUND_EXCEPTION));
         if(team.getMembers()==null)
             team.setMembers(new ArrayList<>());
-        team.getMembers().add(member);
+        team.getMembers().addAll(members);
         teamCollectionRepo.save(team);
+        userService.addOrUpdateUsersTeams(team);
+
     }
-    public void deleteTeamMember(String MemberId,String teamId){
+    public void deleteTeamMember(String memberId,String teamId){
         TeamCollection team= teamCollectionRepo.findById(teamId).orElseThrow(()->new RuntimeErrorCodedException(ErrorCode.TEAM_NOT_FOUND_EXCEPTION));
-        team.getMembers().removeIf(member -> Objects.equals(member.getMemberId(), MemberId));
+        team.getMembers().removeIf(member -> Objects.equals(member.getMemberId(), memberId));
+        List<String>tasksIds=new ArrayList<>();
+        for (Task t:team.getTeamTasks()){
+            if(t.getAssignee().getMemberId().equals(memberId)){
+                tasksIds.add(t.getTaskId());
+                t.setAssignee(null);
+            }
+        }
+        if(!tasksIds.isEmpty()) {
+            List<TaskCollection> taskCollection = taskCollectionRepo.findAll();
+            for (String id : tasksIds) {
+                for (TaskCollection task : taskCollection) {
+                    if (task.getTaskId().equals(id)) {
+                        task.setAssignee(null);
+                        break;
+                    }
+                }
+            }
+            taskCollectionRepo.saveAll(taskCollection);
+            User user=userRepo.findById(memberId).orElseThrow(()->new RuntimeErrorCodedException(ErrorCode.USER_NOT_FOUND_EXCEPTION));
+            List<Task> userTasks=user.getTasks();
+            for (String id:tasksIds) {
+                userTasks.removeIf(t -> t.getTaskId().equals(id));
+            }
+            user.setTasks(userTasks);
+            userRepo.save(user);
+        }
+
         teamCollectionRepo.save(team);
+        userService.deleteUserTeam(teamId);
+    }
+    private void deleteTeamTasks(String teamId) {
+        Query query = new Query(Criteria.where("teamId").is(teamId));
+        template.remove(query, TaskCollection.class);
     }
 }

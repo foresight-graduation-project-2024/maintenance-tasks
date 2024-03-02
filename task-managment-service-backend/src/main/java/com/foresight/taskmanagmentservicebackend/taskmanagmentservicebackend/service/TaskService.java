@@ -1,9 +1,6 @@
 package com.foresight.taskmanagmentservicebackend.taskmanagmentservicebackend.service;
 
-import com.foresight.taskmanagmentservicebackend.taskmanagmentservicebackend.collection.TaskCollection;
-import com.foresight.taskmanagmentservicebackend.taskmanagmentservicebackend.collection.TaskSequence;
-import com.foresight.taskmanagmentservicebackend.taskmanagmentservicebackend.collection.TeamCollection;
-import com.foresight.taskmanagmentservicebackend.taskmanagmentservicebackend.collection.UserInfo;
+import com.foresight.taskmanagmentservicebackend.taskmanagmentservicebackend.collection.*;
 import com.foresight.taskmanagmentservicebackend.taskmanagmentservicebackend.dto.CreateCommentDto;
 import com.foresight.taskmanagmentservicebackend.taskmanagmentservicebackend.dto.CreateTaskRequest;
 import com.foresight.taskmanagmentservicebackend.taskmanagmentservicebackend.dto.TaskSearchCriteria;
@@ -13,6 +10,7 @@ import com.foresight.taskmanagmentservicebackend.taskmanagmentservicebackend.exc
 import com.foresight.taskmanagmentservicebackend.taskmanagmentservicebackend.model.*;
 import com.foresight.taskmanagmentservicebackend.taskmanagmentservicebackend.mapper.TaskMapper;
 import com.foresight.taskmanagmentservicebackend.taskmanagmentservicebackend.repo.TaskCollectionRepo;
+import com.mongodb.BasicDBObject;
 import lombok.AllArgsConstructor;
 import org.springframework.beans.BeanUtils;
 import org.springframework.data.domain.Page;
@@ -30,6 +28,8 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.UUID;
+
+import static org.springframework.data.mongodb.core.query.Criteria.where;
 
 @Service
 @AllArgsConstructor
@@ -49,9 +49,9 @@ public class TaskService {
         taskCollection.setTitle(getUniqueTaskTitle(teamId,nextSequence));
         taskCollection = taskCollectionRepo.save(taskCollection);
         Task task1 = mapper.taskCollectionToTask(taskCollection);
+        teamService.addTask(task1, teamId);
         if(taskRequest.getAssignee()!=null)
          userService.addTask(task1, taskRequest.getAssignee().getMemberId());
-        teamService.addTask(task1, teamId);
         updateSequence(teamId, nextSequence + 1);
 //        notificationService.pushUserNotification(taskRequest.getAssignee().getMemberId(), Notification.builder()
 //                .notificationId(UUID.randomUUID().toString())
@@ -131,7 +131,7 @@ public class TaskService {
     public boolean deleteTask(String teamId, String taskId) {
         TaskCollection taskCollection= taskCollectionRepo.findById(taskId).orElseThrow(()->new RuntimeErrorCodedException(ErrorCode.TASK_NOT_FOUND_EXCEPTION));
         if(taskCollection.getAssignee()!=null)
-         userService.deleteTask(taskCollection.getAssignee().getMemberId(),taskId);
+            userService.deleteTask(taskCollection.getAssignee().getMemberId(),taskId);
         teamService.deleteTeamTask(teamId,taskId);
         taskCollectionRepo.deleteById(taskId);
 //        notificationService.pushUserNotification(taskCollection.getAssignee().getMemberId(), Notification.builder()
