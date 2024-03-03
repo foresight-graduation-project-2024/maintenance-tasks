@@ -62,11 +62,15 @@ public class UserService {
 
     public void editTask(Task task) {
         User user=userRepo.findById(task.getAssignee().getMemberId()).orElseThrow(()->new RuntimeErrorCodedException(ErrorCode.USER_NOT_FOUND_EXCEPTION));
-        List<Task> userTasks=user.getTasks().stream()
-                .map(t -> t.getTaskId().equals(task.getTaskId()) ? task : t)
-                .toList();
-        user.setTasks(userTasks);
-        userRepo.save(user);
+        if(user.getTasks()==null || user.getTasks().isEmpty()) {
+            throw new RuntimeErrorCodedException(ErrorCode.TASK_NOT_FOUND_EXCEPTION);
+        }else {
+            List<Task> userTasks = user.getTasks().stream()
+                    .map(t -> t.getTaskId().equals(task.getTaskId()) ? task : t)
+                    .toList();
+            user.setTasks(userTasks);
+            userRepo.save(user);
+        }
     }
 
     public void deleteTask(String memberId, String taskId) {
@@ -84,12 +88,19 @@ public class UserService {
         ProjectionOperation projectTotal = project().and("teams").as("teams").andInclude("userId");
         TypedAggregation<User> aggregateTotal = newAggregation(User.class, match(where("userId").is(userId)), projectTotal);
         AggregationResults<User> totalTasksAggregation = mongoTemplate.aggregate(aggregateTotal, User.class, User.class);
-        long count=totalTasksAggregation.getMappedResults().get(0).getTeams().size();
-        //getting a page of teams
-        ProjectionOperation project = project().and("teams").slice(pageable.getPageSize(),(int) pageable.getOffset()).as("teams").andInclude("userId");
-        TypedAggregation<User> agg = newAggregation(User.class, match(where("userId").is(userId)), project);
-        AggregationResults<User> aggregate = mongoTemplate.aggregate(agg, User.class, User.class);
-        List<Team> teams=aggregate.getMappedResults().get(0).getTeams();
+        long count=0;
+        List<Team> teams= new ArrayList<>();
+        if(totalTasksAggregation.getMappedResults().size()!=0) {
+            if (totalTasksAggregation.getMappedResults().get(0).getTeams() != null) {
+                count = totalTasksAggregation.getMappedResults().get(0).getTeams().size();
+                //getting a page of teams
+                ProjectionOperation project = project().and("teams").slice(pageable.getPageSize(), (int) pageable.getOffset()).as("teams").andInclude("userId");
+                TypedAggregation<User> agg = newAggregation(User.class, match(where("userId").is(userId)), project);
+                AggregationResults<User> aggregate = mongoTemplate.aggregate(agg, User.class, User.class);
+                teams = aggregate.getMappedResults().get(0).getTeams();
+            }
+        }else
+            throw new RuntimeErrorCodedException(ErrorCode.USER_NOT_FOUND_EXCEPTION);
         return new PageImpl<>(teams,pageable,count);
     }
 
@@ -98,13 +109,19 @@ public class UserService {
         ProjectionOperation projectTotal = project().and("tasks").as("tasks").andInclude("userId");
         TypedAggregation<User> aggregateTotal = newAggregation(User.class, match(where("userId").is(userId)), projectTotal);
         AggregationResults<User> totalTasksAggregation = mongoTemplate.aggregate(aggregateTotal, User.class, User.class);
-        long count=totalTasksAggregation.getMappedResults().get(0).getTasks().size();
-
-        //getting a page of tasks
-        ProjectionOperation project = project().and("tasks").slice(pageable.getPageSize(),(int) pageable.getOffset()).as("tasks").andInclude("userId");
-        TypedAggregation<User> agg = newAggregation(User.class, match(where("userId").is(userId)), project);
-        AggregationResults<User> aggregate = mongoTemplate.aggregate(agg, User.class, User.class);
-        List<Task> tasks=aggregate.getMappedResults().get(0).getTasks();
+        long count=0;
+        List<Task> tasks= new ArrayList<>();
+        if(totalTasksAggregation.getMappedResults().size()!=0) {
+            if (totalTasksAggregation.getMappedResults().get(0).getTasks() != null) {
+                count = totalTasksAggregation.getMappedResults().get(0).getTasks().size();
+                //getting a page of tasks
+                ProjectionOperation project = project().and("tasks").slice(pageable.getPageSize(), (int) pageable.getOffset()).as("tasks").andInclude("userId");
+                TypedAggregation<User> agg = newAggregation(User.class, match(where("userId").is(userId)), project);
+                AggregationResults<User> aggregate = mongoTemplate.aggregate(agg, User.class, User.class);
+                tasks = aggregate.getMappedResults().get(0).getTasks();
+            }
+        }else
+            throw new RuntimeErrorCodedException(ErrorCode.USER_NOT_FOUND_EXCEPTION);
         return new PageImpl<>(tasks,pageable,count);
     }
 
