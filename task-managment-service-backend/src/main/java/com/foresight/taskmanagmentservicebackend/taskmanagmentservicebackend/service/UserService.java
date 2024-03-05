@@ -67,10 +67,20 @@ public class UserService {
             user.setTasks(List.of(task));
             userRepo.save(user);
         }else {
-            List<Task> userTasks = user.getTasks().stream()
-                    .map(t -> t.getTaskId().equals(task.getTaskId()) ? task : t)
-                    .toList();
-            user.setTasks(userTasks);
+            List<Task> userTasks = user.getTasks();
+            boolean taskExists = userTasks.stream().anyMatch(t -> t.getTaskId().equals(task.getTaskId()));
+
+            if (taskExists) {
+                // Update existing task
+                List<Task> updatedTasks = userTasks.stream()
+                        .map(t -> t.getTaskId().equals(task.getTaskId()) ? task : t)
+                        .toList();
+                user.setTasks(updatedTasks);
+            } else {
+                // Add new task
+                userTasks.add(task);
+            }
+
             userRepo.save(user);
         }
     }
