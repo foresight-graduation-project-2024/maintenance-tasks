@@ -63,7 +63,9 @@ public class UserService {
     public void editTask(Task task) {
         User user=userRepo.findById(task.getAssignee().getMemberId()).orElseThrow(()->new RuntimeErrorCodedException(ErrorCode.USER_NOT_FOUND_EXCEPTION));
         if(user.getTasks()==null || user.getTasks().isEmpty()) {
-            throw new RuntimeErrorCodedException(ErrorCode.TASK_NOT_FOUND_EXCEPTION);
+            //throw new RuntimeErrorCodedException(ErrorCode.TASK_NOT_FOUND_EXCEPTION);
+            user.setTasks(List.of(task));
+            userRepo.save(user);
         }else {
             List<Task> userTasks = user.getTasks().stream()
                     .map(t -> t.getTaskId().equals(task.getTaskId()) ? task : t)

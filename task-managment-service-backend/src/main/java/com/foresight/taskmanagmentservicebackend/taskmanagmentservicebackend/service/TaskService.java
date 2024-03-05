@@ -62,7 +62,8 @@ public class TaskService {
     }
 
     public void editTask(TaskCollection taskCollection, String teamId) {
-        taskCollectionRepo.findById(taskCollection.getTaskId()).orElseThrow(() -> new RuntimeErrorCodedException(ErrorCode.TASK_NOT_FOUND_EXCEPTION));
+        TaskCollection oldTask=taskCollectionRepo.findById(taskCollection.getTaskId()).orElseThrow(() -> new RuntimeErrorCodedException(ErrorCode.TASK_NOT_FOUND_EXCEPTION));
+        oldTask.builder().summary(taskCollection.getSummary()).assignee(taskCollection.getAssignee()).priority(taskCollection.getPriority()).title(taskCollection.getTitle()).description(taskCollection.getDescription()).status(taskCollection.getStatus()).startDate(taskCollection.getStartDate()).endDate(taskCollection.getEndDate()).build();
         taskCollectionRepo.save(taskCollection);
         Task task = mapper.taskCollectionToTask(taskCollection);
         teamService.editTask(task, teamId);
