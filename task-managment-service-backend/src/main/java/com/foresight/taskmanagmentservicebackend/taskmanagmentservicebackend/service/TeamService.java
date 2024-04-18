@@ -21,16 +21,14 @@ import com.foresight.taskmanagmentservicebackend.taskmanagmentservicebackend.rep
 import lombok.AllArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.*;
-
-import static org.springframework.data.mongodb.core.query.Criteria.where;
 
 
 @Service
@@ -44,18 +42,26 @@ public class TeamService {
     private TaskSequenceRepo taskSequenceRepo;
     private TaskCollectionRepo taskCollectionRepo;
     private UserRepo userRepo;
+    @Transactional
     public void createTeam(CreateTeamRequest request){
-        TeamCollection team = teamCollectionRepo.save(mapper.createTeamRequestToTeamCollection(request));
-        if(request.getMembers()!=null && !request.getMembers().isEmpty())
-         userService.addOrUpdateUsersTeams(team);
-        userService.addUser(team);
-        taskSequenceRepo.save(new TaskSequence(team.getTeamId(), 1L));
-        notificationService.pushTeamNotification(team.getTeamId(), Notification.builder()
-                .notificationId(UUID.randomUUID().toString())
-                .receiver(team.getTeamId())
-                .content(NotificationMessages.TEAM_CREATED.getMessage("Technical Manager"))
-                .issuedDate(new Date())
-                .build());
+        TeamCollection t = mapper.createTeamRequestToTeamCollection(request);
+        try {
+            TeamCollection team = teamCollectionRepo.save(t);
+            // add or update team members (if they are already exist in a team) to user table
+            if(!request.getMembers().isEmpty())
+                userService.addOrUpdateUsersTeams(team);
+            //adding team leader to user table
+            userService.addOrUpdateTeamLeader(team);
+            taskSequenceRepo.save(new TaskSequence(team.getTeamId(), 1L));
+            notificationService.pushTeamNotification(team.getTeamId(), Notification.builder()
+                    .notificationId(UUID.randomUUID().toString())
+                    .receiver(team.getTeamId())
+                    .content(NotificationMessages.TEAM_CREATED.getMessage("Technical Manager"))
+                    .issuedDate(new Date())
+                    .build());
+        }catch (Exception e){
+            throw new RuntimeErrorCodedException(ErrorCode.UNKNOWN_SERVER_ERROR);
+        }
     }
 
     public Page<TeamCollection> getAll(Pageable page) {
@@ -65,10 +71,10 @@ public class TeamService {
     public TeamCollection getTeam(String id) {
         return teamCollectionRepo.findById(id).orElseThrow(()->new RuntimeErrorCodedException(ErrorCode.TEAM_NOT_FOUND_EXCEPTION));
     }
-
+    @Transactional
     public void deleteTeam(String teamId){
         TeamCollection teamCollection=teamCollectionRepo.findById(teamId).orElseThrow(()->new RuntimeErrorCodedException(ErrorCode.TEAM_NOT_FOUND_EXCEPTION));
-        userService.deleteUserTeam(teamId);
+        userService.deleteUsersCollectionTeam(teamId);
         deleteTeamTasks(teamId);
         taskSequenceRepo.deleteById(teamId);
         teamCollectionRepo.deleteById(teamId);
@@ -79,16 +85,22 @@ public class TeamService {
 //                .issuedDate(new Date())
 //                .build());
     }
+    @Transactional
     public void updateTeam(TeamCollection team){
         TeamCollection oldTeam= teamCollectionRepo.findById(team.getTeamId()).orElseThrow(()->new RuntimeErrorCodedException(ErrorCode.TEAM_NOT_FOUND_EXCEPTION));
+        oldTeam.setName(team.getName());
+        oldTeam.setDescription(team.getDescription());
+        if(containMember(team.getMembers(),team.getTeamLeader().getMemberId())){
+            team.getMembers().removeIf(member -> Objects.equals(member.getMemberId(),team.getTeamLeader().getMemberId()));
+            deleteTeamMember(team.getTeamLeader().getMemberId(), team.getTeamId());
+        }
+
+        oldTeam.setTeamLeader(team.getTeamLeader());
+        userService.addOrUpdateTeamLeader(team);
         if(team.getMembers()!=null) {
             userService.addOrUpdateUsersTeams(team);
             oldTeam.setMembers(team.getMembers());
         }
-        oldTeam.setName(team.getName());
-        oldTeam.setDescription(team.getDescription());
-        oldTeam.setTeamLeader(team.getTeamLeader());
-//        oldTeam.setSignature(team.getSignature());
         teamCollectionRepo.save(oldTeam);
 //        notificationService.pushTeamNotification(team.getTeamId(), Notification.builder()
 //                .notificationId(UUID.randomUUID().toString())
@@ -143,26 +155,45 @@ public class TeamService {
         team.getTeamTasks().removeIf(task -> Objects.equals(task.getTaskId(), taskId));
         teamCollectionRepo.save(team);
     }
+    @Transactional
     public void addTeamMember(List<Member> members, String teamId){
         TeamCollection team= teamCollectionRepo.findById(teamId).orElseThrow(()->new RuntimeErrorCodedException(ErrorCode.TEAM_NOT_FOUND_EXCEPTION));
+        for(Member member:members) {
+            if (this.containMember(team.getMembers(), member.getMemberId()))
+                throw new RuntimeErrorCodedException(ErrorCode.MEMBER_ALREADY_EXISTS);
+        }
         if(team.getMembers()==null)
             team.setMembers(new ArrayList<>());
         team.getMembers().addAll(members);
         teamCollectionRepo.save(team);
         userService.addOrUpdateUsersTeams(team);
+        userService.addOrUpdateTeamLeader(team);
 
     }
+
+    private boolean containMember(List<Member> members, String memberId) {
+       return members.stream().anyMatch(member -> member.getMemberId().equals(memberId));
+    }
+    @Transactional
     public void deleteTeamMember(String memberId,String teamId){
         TeamCollection team= teamCollectionRepo.findById(teamId).orElseThrow(()->new RuntimeErrorCodedException(ErrorCode.TEAM_NOT_FOUND_EXCEPTION));
+        if(!this.containMember(team.getMembers(),memberId))
+            throw new RuntimeErrorCodedException(ErrorCode.MEMBER_NOT_FOUND);
+        if(team.getMembers().size()<2)
+            throw new RuntimeErrorCodedException(ErrorCode.INVALID_MEMBERS_NUMBER);
         team.getMembers().removeIf(member -> Objects.equals(member.getMemberId(), memberId));
         List<String>tasksIds=new ArrayList<>();
-        for (Task t:team.getTeamTasks()){
-            if(t.getAssignee().getMemberId().equals(memberId)){
-                tasksIds.add(t.getTaskId());
-                t.setAssignee(null);
+        //make deleted member tasks unassigned in team collection
+        if(team.getTeamTasks()!=null) {
+            for (Task t : team.getTeamTasks()) {
+                if (t.getAssignee().getMemberId().equals(memberId)) {
+                    tasksIds.add(t.getTaskId());
+                    t.setAssignee(null);
+                }
             }
         }
         if(!tasksIds.isEmpty()) {
+            //make deleted member tasks unassigned in team collection
             List<TaskCollection> taskCollection = taskCollectionRepo.findAll();
             for (String id : tasksIds) {
                 for (TaskCollection task : taskCollection) {
@@ -173,6 +204,8 @@ public class TeamService {
                 }
             }
             taskCollectionRepo.saveAll(taskCollection);
+
+            //remove deleted member tasks from user collection
             User user=userRepo.findById(memberId).orElseThrow(()->new RuntimeErrorCodedException(ErrorCode.USER_NOT_FOUND_EXCEPTION));
             List<Task> userTasks=user.getTasks();
             for (String id:tasksIds) {
@@ -182,8 +215,9 @@ public class TeamService {
             userRepo.save(user);
         }
 
-        teamCollectionRepo.save(team);
-        userService.deleteUserTeam(teamId);
+        //teamCollectionRepo.save(team);
+        this.updateTeam(team);
+        userService.deleteUserTeam(memberId,teamId);
     }
     private void deleteTeamTasks(String teamId) {
         Query query = new Query(Criteria.where("teamId").is(teamId));

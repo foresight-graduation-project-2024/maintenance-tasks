@@ -19,5 +19,5 @@ public class CreateTaskRequest {
     private Member creator;
     private Member assignee;
     private List<Comment> comments;
-//    private List<TaskHistory> histories;
+//   private List<TaskHistory> histories;
 }

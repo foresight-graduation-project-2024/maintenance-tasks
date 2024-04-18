@@ -22,6 +22,7 @@ import org.springframework.data.mongodb.core.query.Update;
 import org.springframework.stereotype.Service;
 
 import org.springframework.data.domain.Pageable;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -41,7 +42,7 @@ public class TaskService {
     private NotificationService notificationService;
     private MongoTemplate mongoTemplate;
     private UserInfoService userInfoService;
-
+    @Transactional
     public void createTask(CreateTaskRequest taskRequest, String teamId) {
         TaskCollection taskCollection = mapper.createTaskRequestToTaskCollection( taskRequest);
         taskCollection.setTeamId(teamId);
@@ -60,10 +61,10 @@ public class TaskService {
 //                .issuedDate(new Date())
 //                .build());
     }
-
+    @Transactional
     public void editTask(TaskCollection taskCollection, String teamId) {
         TaskCollection oldTask=taskCollectionRepo.findById(taskCollection.getTaskId()).orElseThrow(() -> new RuntimeErrorCodedException(ErrorCode.TASK_NOT_FOUND_EXCEPTION));
-        oldTask.builder().summary(taskCollection.getSummary()).assignee(taskCollection.getAssignee()).priority(taskCollection.getPriority()).title(taskCollection.getTitle()).description(taskCollection.getDescription()).status(taskCollection.getStatus()).startDate(taskCollection.getStartDate()).endDate(taskCollection.getEndDate()).build();
+        //TaskCollection.builder().summary(taskCollection.getSummary()).assignee(taskCollection.getAssignee()).title(oldTask.getTitle()).priority(taskCollection.getPriority()).description(taskCollection.getDescription()).status(taskCollection.getStatus()).startDate(taskCollection.getStartDate()).endDate(taskCollection.getEndDate()).build();
         taskCollectionRepo.save(taskCollection);
         Task task = mapper.taskCollectionToTask(taskCollection);
         teamService.editTask(task, teamId);
@@ -128,7 +129,7 @@ public class TaskService {
         return new PageImpl<>(summaries, pageable, count);
 
     }
-
+    @Transactional
     public boolean deleteTask(String teamId, String taskId) {
         TaskCollection taskCollection= taskCollectionRepo.findById(taskId).orElseThrow(()->new RuntimeErrorCodedException(ErrorCode.TASK_NOT_FOUND_EXCEPTION));
         if(taskCollection.getAssignee()!=null)

@@ -5,6 +5,7 @@ import com.foresight.taskmanagmentservicebackend.taskmanagmentservicebackend.mod
 import com.foresight.taskmanagmentservicebackend.taskmanagmentservicebackend.service.TeamService;
 import com.foresight.taskmanagmentservicebackend.taskmanagmentservicebackend.collection.TeamCollection;
 import com.foresight.taskmanagmentservicebackend.taskmanagmentservicebackend.dto.CreateTeamRequest;
+import jakarta.validation.Valid;
 import lombok.AllArgsConstructor;
 import lombok.NoArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -22,7 +23,7 @@ import java.util.List;
 public class TeamController {
     private TeamService teamService;
     @PostMapping
-    public void addTeam(@RequestBody CreateTeamRequest createTeamRequest){
+    public void addTeam(@RequestBody @Valid CreateTeamRequest createTeamRequest){
             teamService.createTeam(createTeamRequest);
     }
     @GetMapping
@@ -49,8 +50,8 @@ public class TeamController {
     public Page<TeamSummary> searchTeamsSummary(Pageable pageable, TeamSearchCriteria criteria){
         return teamService.searchSummaries(pageable,criteria);
     }
-    @PostMapping("/member/{id}")
-    public void addTeamMember(@RequestBody List<Member> members, @PathVariable String id){
+    @PostMapping("/member/{teamId}")
+    public void addTeamMember(@RequestBody List<Member> members, @PathVariable("teamId") String id){
         teamService.addTeamMember(members,id);
     }
     @DeleteMapping("/member/{teamId}/{memberId}")

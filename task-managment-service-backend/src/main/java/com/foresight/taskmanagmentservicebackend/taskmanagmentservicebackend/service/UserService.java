@@ -20,6 +20,7 @@ import org.springframework.data.mongodb.core.aggregation.*;
 import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.data.mongodb.core.query.Update;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -34,22 +35,33 @@ public class UserService {
     private UserRepo userRepo;
     private MongoTemplate mongoTemplate;
     private TeamMapper teamMapper;
+    @Transactional
     public void addOrUpdateUsersTeams(TeamCollection teamCollection){
+        //expected: add team to user and update team for users
+        //found: adding team to user but add a new copy of team instead of update the old one
         List<Member> members =teamCollection.getMembers();
         Team team= teamMapper.teamCollectionToTeam(teamCollection);
         BulkOperations bulkOps = mongoTemplate.bulkOps(BulkOperations.BulkMode.UNORDERED, User.class);
         for (Member member: members) {
             Query query = new Query(where("userId").is(member.getMemberId()));
-            Update update = new Update().addToSet("teams", team);
-            bulkOps.upsert(query, update);
+            Update addToSetUpdate = new Update().addToSet("teams", team); // Add the updated team to the array
+            Update pullUpdate = new Update().pull("teams", new BasicDBObject("teamId", team.getTeamId())); // Remove the existing team from the array
+
+            bulkOps.upsert(query, pullUpdate);
+            bulkOps.upsert(query, addToSetUpdate);
         }
         bulkOps.execute();
     }
 
-    public void deleteUserTeam(String teamId) {
+    public void deleteUsersCollectionTeam(String teamId) {
         Query query = new Query(where("teams.teamId").is(teamId));
         Update update = new Update().pull("teams", new BasicDBObject("teamId", teamId));
         mongoTemplate.updateMulti(query, update, User.class);
+    }
+    public void deleteUserTeam(String userId ,String teamId){
+        Query query = new Query(where("userId").is(userId));
+        Update pullUpdate = new Update().pull("teams", new BasicDBObject("teamId", teamId));
+        mongoTemplate.upsert(query,pullUpdate,User.class);
     }
 
     public void addTask(Task task, String memberId) {
@@ -137,10 +149,12 @@ public class UserService {
         return new PageImpl<>(tasks,pageable,count);
     }
 
-    public void addUser(TeamCollection teamCollection) {
+    public void addOrUpdateTeamLeader(TeamCollection teamCollection) {
         Team team= teamMapper.teamCollectionToTeam(teamCollection);
         Query query = new Query(where("userId").is(teamCollection.getTeamLeader().getMemberId()));
-        Update update = new Update().addToSet("teams", team);
-        mongoTemplate.upsert(query,update,User.class);
+        Update pullUpdate = new Update().pull("teams", new BasicDBObject("teamId", team.getTeamId())); // Remove the existing team from the array
+        Update addToSetUpdate = new Update().addToSet("teams", team);
+        mongoTemplate.upsert(query,pullUpdate,User.class);
+        mongoTemplate.upsert(query,addToSetUpdate,User.class);
     }
 }

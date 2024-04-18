@@ -3,11 +3,14 @@ package com.foresight.taskmanagmentservicebackend.taskmanagmentservicebackend.co
 import com.foresight.taskmanagmentservicebackend.taskmanagmentservicebackend.collection.User;
 import com.foresight.taskmanagmentservicebackend.taskmanagmentservicebackend.model.Task;
 import com.foresight.taskmanagmentservicebackend.taskmanagmentservicebackend.model.Team;
+import com.foresight.taskmanagmentservicebackend.taskmanagmentservicebackend.repo.UserRepo;
 import com.foresight.taskmanagmentservicebackend.taskmanagmentservicebackend.service.UserService;
 import lombok.AllArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 @RestController
 @RequestMapping("/user")
@@ -16,6 +19,7 @@ import org.springframework.web.bind.annotation.*;
 
 public class UserController {
     UserService userService;
+    UserRepo userRepo;
     @GetMapping("/{id}")
     public User getUser(@PathVariable String id){
         return userService.getUser(id);
@@ -29,4 +33,9 @@ public class UserController {
     public Page<Task> userTasks(Pageable pageable,@PathVariable String userId){
         return userService.getUserTasks(pageable,userId);
     }
+    @GetMapping("/all")
+    public List<User> getAllUsers(){
+        return userRepo.findAll();
+    }
+
 }
