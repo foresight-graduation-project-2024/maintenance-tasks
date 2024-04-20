@@ -88,6 +88,7 @@ public class TeamService {
     @Transactional
     public void updateTeam(TeamCollection team){
         TeamCollection oldTeam= teamCollectionRepo.findById(team.getTeamId()).orElseThrow(()->new RuntimeErrorCodedException(ErrorCode.TEAM_NOT_FOUND_EXCEPTION));
+        team.setMembers(oldTeam.getMembers());
         oldTeam.setName(team.getName());
         oldTeam.setDescription(team.getDescription());
         if(containMember(team.getMembers(),team.getTeamLeader().getMemberId())){
@@ -97,9 +98,9 @@ public class TeamService {
 
         oldTeam.setTeamLeader(team.getTeamLeader());
         userService.addOrUpdateTeamLeader(team);
-        if(oldTeam.getMembers()!=null) {
+        if(team.getMembers()!=null) {
             userService.addOrUpdateUsersTeams(team);
-            oldTeam.setMembers(team.getMembers());
+            //oldTeam.setMembers(team.getMembers());
         }
         teamCollectionRepo.save(oldTeam);
 //        notificationService.pushTeamNotification(team.getTeamId(), Notification.builder()
