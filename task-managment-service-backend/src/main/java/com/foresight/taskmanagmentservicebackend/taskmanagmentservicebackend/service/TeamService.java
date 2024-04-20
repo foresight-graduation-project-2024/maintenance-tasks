@@ -97,7 +97,7 @@ public class TeamService {
 
         oldTeam.setTeamLeader(team.getTeamLeader());
         userService.addOrUpdateTeamLeader(team);
-        if(team.getMembers()!=null) {
+        if(oldTeam.getMembers()!=null) {
             userService.addOrUpdateUsersTeams(team);
             oldTeam.setMembers(team.getMembers());
         }
