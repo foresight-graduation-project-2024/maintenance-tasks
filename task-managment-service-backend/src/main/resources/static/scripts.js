@@ -1,5 +1,5 @@
 // Establishing a WebSocket connection using SockJS
-const socket = new SockJS('/websocket-Initializer'); // Replace with your WebSocket endpoint
+const socket = new SockJS('/websocket-Initializer');
 
 // Creating a STOMP client over the WebSocket connection
 const stompClient = Stomp.over(socket);
@@ -9,7 +9,7 @@ stompClient.connect({}, function () {
     console.log('Connected to WebSocket');
     console.log('hello');
     // Subscribe to the user-specific WebSocket destination
-     let userId = '1'; // Replace with the actual user ID
+     let userId = '52'; // Replace with the actual user ID
      stompClient.subscribe(`/user/${userId}/topic/private-notifications`, function (message) {
         // Handle incoming messages received from the subscribed destination
         console.log('Received message:', JSON.parse(message.body));

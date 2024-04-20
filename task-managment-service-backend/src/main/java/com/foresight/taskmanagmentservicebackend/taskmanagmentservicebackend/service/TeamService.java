@@ -172,6 +172,8 @@ public class TeamService {
     }
 
     private boolean containMember(List<Member> members, String memberId) {
+       if(members == null || members.isEmpty())
+           return false;
        return members.stream().anyMatch(member -> member.getMemberId().equals(memberId));
     }
     @Transactional

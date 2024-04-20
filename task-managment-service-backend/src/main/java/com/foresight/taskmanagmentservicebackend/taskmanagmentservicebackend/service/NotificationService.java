@@ -2,6 +2,8 @@ package com.foresight.taskmanagmentservicebackend.taskmanagmentservicebackend.se
 
 import com.foresight.taskmanagmentservicebackend.taskmanagmentservicebackend.collection.TeamCollection;
 import com.foresight.taskmanagmentservicebackend.taskmanagmentservicebackend.collection.UserNotifications;
+import com.foresight.taskmanagmentservicebackend.taskmanagmentservicebackend.exception.ErrorCode;
+import com.foresight.taskmanagmentservicebackend.taskmanagmentservicebackend.exception.RuntimeErrorCodedException;
 import com.foresight.taskmanagmentservicebackend.taskmanagmentservicebackend.model.Member;
 import com.foresight.taskmanagmentservicebackend.taskmanagmentservicebackend.model.Notification;
 import com.foresight.taskmanagmentservicebackend.taskmanagmentservicebackend.repo.TeamCollectionRepo;
@@ -19,6 +21,7 @@ import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 import static org.springframework.data.mongodb.core.aggregation.Aggregation.*;
 import static org.springframework.data.mongodb.core.aggregation.Aggregation.match;
@@ -37,13 +40,17 @@ public class NotificationService {
         ProjectionOperation projectTotal = project().and("notifications").as("notifications").andInclude("userId");
         TypedAggregation<UserNotifications> aggregateTotal = newAggregation(UserNotifications.class, match(where("userId").is(id)), projectTotal);
         AggregationResults<UserNotifications> totalTasksAggregation = mongoTemplate.aggregate(aggregateTotal, UserNotifications.class, UserNotifications.class);
-        long count=totalTasksAggregation.getMappedResults().get(0).getNotifications().size();
-
+        long count=0;
+        if(totalTasksAggregation.getMappedResults().size() >0)
+         count=totalTasksAggregation.getMappedResults().get(0).getNotifications().size();
+        List<Notification> notifications=new ArrayList<>();
         //getting a page of notifications
-        ProjectionOperation project = project().and("notifications").slice(pageable.getPageSize(),(int) pageable.getOffset()).as("notifications").andInclude("userId");
-        TypedAggregation<UserNotifications> agg = newAggregation(UserNotifications.class, match(where("userId").is(id)), project);
-        AggregationResults<UserNotifications> aggregate = mongoTemplate.aggregate(agg, UserNotifications.class, UserNotifications.class);
-        List<Notification> notifications=aggregate.getMappedResults().get(0).getNotifications();
+        if(count >0) {
+            ProjectionOperation project = project().and("notifications").slice(pageable.getPageSize(), (int) pageable.getOffset()).as("notifications").andInclude("userId");
+            TypedAggregation<UserNotifications> agg = newAggregation(UserNotifications.class, match(where("userId").is(id)), project);
+            AggregationResults<UserNotifications> aggregate = mongoTemplate.aggregate(agg, UserNotifications.class, UserNotifications.class);
+            notifications = aggregate.getMappedResults().get(0).getNotifications();
+        }
         return new PageImpl<>(notifications,pageable,count);
     }
 
@@ -58,18 +65,20 @@ public class NotificationService {
         notificationRepo.save(userNotifications);
         messagingTemplate.convertAndSendToUser(userId,"/topic/private-notifications", notification);
     }
-    public void pushTeamNotification(String teamId, Notification notification){
-        TeamCollection team= teamCollectionRepo.findById(teamId).orElse(null);
-        List<UserNotifications> usersNotifications=new ArrayList<>();
-        for (Member user:team.getMembers()) {
-            UserNotifications userNotifications = notificationRepo.findById(user.getMemberId()).orElse(new UserNotifications(user.getMemberId(), new ArrayList<>()));
-            userNotifications.getNotifications().add(notification);
-            usersNotifications.add(userNotifications);
+    public void pushTeamNotification(String teamId, Notification notification) {
+        Optional<TeamCollection> team = teamCollectionRepo.findById(teamId);
+        List<UserNotifications> usersNotifications = new ArrayList<>();
+        if (team.isPresent() && team.get().getMembers()!=null) {
+            for (Member user : team.get().getMembers()) {
+                UserNotifications userNotifications = notificationRepo.findById(user.getMemberId()).orElse(new UserNotifications(user.getMemberId(), new ArrayList<>()));
+                userNotifications.getNotifications().add(notification);
+                usersNotifications.add(userNotifications);
 
+            }
+            if (!usersNotifications.isEmpty())
+                notificationRepo.saveAll(usersNotifications);
+            for (Member user : team.get().getMembers())
+                messagingTemplate.convertAndSendToUser(user.getMemberId(), "/topic/private-notifications", notification);
         }
-        if(!usersNotifications.isEmpty())
-         notificationRepo.saveAll(usersNotifications);
-        for(Member user:team.getMembers())
-         messagingTemplate.convertAndSendToUser(user.getMemberId(),"/topic/private-notifications", notification);
     }
 }

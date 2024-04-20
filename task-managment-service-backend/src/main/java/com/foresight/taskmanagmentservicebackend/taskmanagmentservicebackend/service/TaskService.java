@@ -136,12 +136,14 @@ public class TaskService {
             userService.deleteTask(taskCollection.getAssignee().getMemberId(),taskId);
         teamService.deleteTeamTask(teamId,taskId);
         taskCollectionRepo.deleteById(taskId);
-//        notificationService.pushUserNotification(taskCollection.getAssignee().getMemberId(), Notification.builder()
-//                .notificationId(UUID.randomUUID().toString())
-//                .receiver(taskCollection.getAssignee().getMemberId())
-//                .content(NotificationMessages.TASK_DELETED.getMessage(taskCollection.getTitle()))
-//                .issuedDate(new Date())
-//                .build());
+        if(taskCollection.getAssignee()!=null) {
+        notificationService.pushUserNotification(taskCollection.getAssignee().getMemberId(), Notification.builder()
+                .notificationId(UUID.randomUUID().toString())
+                .receiver(taskCollection.getAssignee().getMemberId())
+                .content(NotificationMessages.TASK_DELETED.getMessage(taskCollection.getTitle()))
+                .issuedDate(new Date())
+                .build());
+        }
         return true;
     }
 
