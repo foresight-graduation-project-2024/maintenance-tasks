@@ -27,4 +27,8 @@ public class NotificationController {
     public Page<Notification> getUserNotifications(Pageable pageable,@PathVariable String id){
         return notificationService.getUserNotifications(pageable,id);
     }
+    @PutMapping("/{userId}/seen")
+    public void markNotificationsAsSeen(@PathVariable String userId) {
+        notificationService.markNotificationsAsSeen(userId);
+    }
 }

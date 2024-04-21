@@ -81,4 +81,16 @@ public class NotificationService {
                 messagingTemplate.convertAndSendToUser(user.getMemberId(), "/topic/private-notifications", notification);
         }
     }
+    public void markNotificationsAsSeen(String userId) {
+        Optional<UserNotifications> optionalUserNotifications = notificationRepo.findById(userId);
+        optionalUserNotifications.ifPresent(userNotifications -> {
+            List<Notification> notifications = userNotifications.getNotifications();
+            if (notifications != null) {
+                for (Notification notification : notifications) {
+                        notification.setSeen(true);
+                }
+                notificationRepo.save(userNotifications);
+            }
+        });
+    }
 }

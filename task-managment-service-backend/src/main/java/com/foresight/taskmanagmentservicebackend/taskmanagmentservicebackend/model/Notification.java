@@ -16,4 +16,5 @@ public class Notification {
         private String content;
         private Date issuedDate;
         private String receiver;
+        private Boolean seen=false;
 }
