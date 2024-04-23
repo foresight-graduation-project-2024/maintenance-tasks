@@ -9,10 +9,7 @@ import com.foresight.taskmanagmentservicebackend.taskmanagmentservicebackend.dto
 import com.foresight.taskmanagmentservicebackend.taskmanagmentservicebackend.dto.TeamSummary;
 import com.foresight.taskmanagmentservicebackend.taskmanagmentservicebackend.exception.ErrorCode;
 import com.foresight.taskmanagmentservicebackend.taskmanagmentservicebackend.exception.RuntimeErrorCodedException;
-import com.foresight.taskmanagmentservicebackend.taskmanagmentservicebackend.model.Member;
-import com.foresight.taskmanagmentservicebackend.taskmanagmentservicebackend.model.Notification;
-import com.foresight.taskmanagmentservicebackend.taskmanagmentservicebackend.model.NotificationMessages;
-import com.foresight.taskmanagmentservicebackend.taskmanagmentservicebackend.model.Task;
+import com.foresight.taskmanagmentservicebackend.taskmanagmentservicebackend.model.*;
 import com.foresight.taskmanagmentservicebackend.taskmanagmentservicebackend.mapper.TeamMapper;
 import com.foresight.taskmanagmentservicebackend.taskmanagmentservicebackend.repo.TaskCollectionRepo;
 import com.foresight.taskmanagmentservicebackend.taskmanagmentservicebackend.repo.TaskSequenceRepo;
@@ -110,6 +107,27 @@ public class TeamService {
 //                .issuedDate(new Date())
 //                .build());
     }
+    @Transactional
+    public void updateTeamMembers(TeamCollection team){
+        TeamCollection oldTeam= teamCollectionRepo.findById(team.getTeamId()).orElseThrow(()->new RuntimeErrorCodedException(ErrorCode.TEAM_NOT_FOUND_EXCEPTION));
+//        if(containMember(team.getMembers(),team.getTeamLeader().getMemberId())){
+//            team.getMembers().removeIf(member -> Objects.equals(member.getMemberId(),team.getTeamLeader().getMemberId()));
+//            deleteTeamMember(team.getTeamLeader().getMemberId(), team.getTeamId());
+//        }
+//
+//        oldTeam.setTeamLeader(team.getTeamLeader());
+//        userService.addOrUpdateTeamLeader(team);
+        if(team.getMembers()!=null) {
+            userService.addOrUpdateUsersTeams(team);
+        }
+        teamCollectionRepo.save(team);
+//        notificationService.pushTeamNotification(team.getTeamId(), Notification.builder()
+//                .notificationId(UUID.randomUUID().toString())
+//                .receiver(team.getTeamId())
+//                .content(NotificationMessages.TEAM_UPDATED.getMessage(team.getName()))
+//                .issuedDate(new Date())
+//                .build());
+    }
 
     public Page<TeamSummary> getTeamsSummary(Pageable pageable) {
 
@@ -192,6 +210,7 @@ public class TeamService {
                 if (t.getAssignee().getMemberId().equals(memberId)) {
                     tasksIds.add(t.getTaskId());
                     t.setAssignee(null);
+                    t.setStatus(StatusEnum.WAITING);
                 }
             }
         }
@@ -202,6 +221,7 @@ public class TeamService {
                 for (TaskCollection task : taskCollection) {
                     if (task.getTaskId().equals(id)) {
                         task.setAssignee(null);
+                        task.setStatus(StatusEnum.WAITING);
                         break;
                     }
                 }
@@ -219,7 +239,7 @@ public class TeamService {
         }
 
         //teamCollectionRepo.save(team);
-        this.updateTeam(team);
+        this.updateTeamMembers(team);
         userService.deleteUserTeam(memberId,teamId);
     }
     private void deleteTeamTasks(String teamId) {
