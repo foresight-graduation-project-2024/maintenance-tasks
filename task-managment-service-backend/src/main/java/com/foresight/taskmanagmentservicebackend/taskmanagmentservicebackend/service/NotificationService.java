@@ -12,6 +12,7 @@ import lombok.AllArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.aggregation.AggregationResults;
 import org.springframework.data.mongodb.core.aggregation.ProjectionOperation;
@@ -36,6 +37,7 @@ public class NotificationService {
     private TeamCollectionRepo teamCollectionRepo;
 
     public Page<Notification> getUserNotifications(Pageable pageable, String id){
+        Sort sort = Sort.by(Sort.Direction.ASC, "issuedDate");
         //getting the total number of notifications
         ProjectionOperation projectTotal = project().and("notifications").as("notifications").andInclude("userId");
         TypedAggregation<UserNotifications> aggregateTotal = newAggregation(UserNotifications.class, match(where("userId").is(id)), projectTotal);
@@ -47,7 +49,7 @@ public class NotificationService {
         //getting a page of notifications
         if(count >0) {
             ProjectionOperation project = project().and("notifications").slice(pageable.getPageSize(), (int) pageable.getOffset()).as("notifications").andInclude("userId");
-            TypedAggregation<UserNotifications> agg = newAggregation(UserNotifications.class, match(where("userId").is(id)), project);
+            TypedAggregation<UserNotifications> agg = newAggregation(UserNotifications.class, match(where("userId").is(id)),sort(sort), project);
             AggregationResults<UserNotifications> aggregate = mongoTemplate.aggregate(agg, UserNotifications.class, UserNotifications.class);
             notifications = aggregate.getMappedResults().get(0).getNotifications();
         }
