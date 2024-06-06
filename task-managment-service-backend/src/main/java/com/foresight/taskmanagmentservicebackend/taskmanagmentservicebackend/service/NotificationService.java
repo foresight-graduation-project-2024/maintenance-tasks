@@ -8,6 +8,9 @@ import com.foresight.taskmanagmentservicebackend.taskmanagmentservicebackend.mod
 import com.foresight.taskmanagmentservicebackend.taskmanagmentservicebackend.model.Notification;
 import com.foresight.taskmanagmentservicebackend.taskmanagmentservicebackend.repo.TeamCollectionRepo;
 import com.foresight.taskmanagmentservicebackend.taskmanagmentservicebackend.repo.UserNotificationRepo;
+import com.google.firebase.messaging.FirebaseMessaging;
+import com.google.firebase.messaging.FirebaseMessagingException;
+import com.google.firebase.messaging.Message;
 import lombok.AllArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
@@ -35,9 +38,10 @@ public class NotificationService {
     private MongoTemplate mongoTemplate;
     private final SimpMessagingTemplate messagingTemplate;
     private TeamCollectionRepo teamCollectionRepo;
+    private final FirebaseMessaging fcm;
 
     public Page<Notification> getUserNotifications(Pageable pageable, String id){
-        Sort sort = Sort.by(Sort.Direction.ASC, "issuedDate");
+        //Sort sort = Sort.by(Sort.Direction.DESC, "issuedDate");
         //getting the total number of notifications
         ProjectionOperation projectTotal = project().and("notifications").as("notifications").andInclude("userId");
         TypedAggregation<UserNotifications> aggregateTotal = newAggregation(UserNotifications.class, match(where("userId").is(id)), projectTotal);
@@ -49,7 +53,7 @@ public class NotificationService {
         //getting a page of notifications
         if(count >0) {
             ProjectionOperation project = project().and("notifications").slice(pageable.getPageSize(), (int) pageable.getOffset()).as("notifications").andInclude("userId");
-            TypedAggregation<UserNotifications> agg = newAggregation(UserNotifications.class, match(where("userId").is(id)),sort(sort), project);
+            TypedAggregation<UserNotifications> agg = newAggregation(UserNotifications.class, match(where("userId").is(id)), project);
             AggregationResults<UserNotifications> aggregate = mongoTemplate.aggregate(agg, UserNotifications.class, UserNotifications.class);
             notifications = aggregate.getMappedResults().get(0).getNotifications();
         }
@@ -66,6 +70,16 @@ public class NotificationService {
         userNotifications.getNotifications().add(notification);
         notificationRepo.save(userNotifications);
         messagingTemplate.convertAndSendToUser(userId,"/topic/private-notifications", notification);
+    }
+    public void userFCM(String userId , Notification notification) throws FirebaseMessagingException {
+        UserNotifications userNotifications =notificationRepo.findById(userId).orElse(new UserNotifications(userId,new ArrayList<>()));
+        userNotifications.getNotifications().add(notification);
+        notificationRepo.save(userNotifications);
+        Message msg = Message.builder()
+                .setTopic("user-"+userId)
+                .putData("content", notification.getContent())
+                .build();
+        fcm.send(msg);
     }
     public void pushTeamNotification(String teamId, Notification notification) {
         Optional<TeamCollection> team = teamCollectionRepo.findById(teamId);

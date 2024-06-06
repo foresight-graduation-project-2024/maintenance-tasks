@@ -10,6 +10,7 @@ import com.foresight.taskmanagmentservicebackend.taskmanagmentservicebackend.exc
 import com.foresight.taskmanagmentservicebackend.taskmanagmentservicebackend.model.*;
 import com.foresight.taskmanagmentservicebackend.taskmanagmentservicebackend.mapper.TaskMapper;
 import com.foresight.taskmanagmentservicebackend.taskmanagmentservicebackend.repo.TaskCollectionRepo;
+import com.google.firebase.messaging.FirebaseMessagingException;
 import com.mongodb.BasicDBObject;
 import lombok.AllArgsConstructor;
 import org.springframework.beans.BeanUtils;
@@ -62,7 +63,7 @@ public class TaskService {
 //                .build());
     }
     @Transactional
-    public void editTask(TaskCollection taskCollection, String teamId) {
+    public void editTask(TaskCollection taskCollection, String teamId)  {
         TaskCollection oldTask=taskCollectionRepo.findById(taskCollection.getTaskId()).orElseThrow(() -> new RuntimeErrorCodedException(ErrorCode.TASK_NOT_FOUND_EXCEPTION));
         //TaskCollection.builder().summary(taskCollection.getSummary()).assignee(taskCollection.getAssignee()).title(oldTask.getTitle()).priority(taskCollection.getPriority()).description(taskCollection.getDescription()).status(taskCollection.getStatus()).startDate(taskCollection.getStartDate()).endDate(taskCollection.getEndDate()).build();
         taskCollectionRepo.save(taskCollection);
@@ -70,12 +71,22 @@ public class TaskService {
         teamService.editTask(task, teamId);
         if(taskCollection.getAssignee()!=null) {
             userService.editTask(task);
-            notificationService.pushUserNotification(taskCollection.getAssignee().getMemberId(), Notification.builder()
-                    .notificationId(UUID.randomUUID().toString())
-                    .receiver(taskCollection.getAssignee().getMemberId())
-                    .content(NotificationMessages.TASK_UPDATED.getMessage(taskCollection.getTitle()))
-                    .issuedDate(new Date())
-                    .build());
+//            notificationService.pushUserNotification(taskCollection.getAssignee().getMemberId(), Notification.builder()
+//                    .notificationId(UUID.randomUUID().toString())
+//                    .receiver(taskCollection.getAssignee().getMemberId())
+//                    .content(NotificationMessages.TASK_UPDATED.getMessage(taskCollection.getTitle()))
+//                    .issuedDate(new Date())
+//                    .build());
+            try {
+                notificationService.userFCM(taskCollection.getAssignee().getMemberId(), Notification.builder()
+                        .notificationId(UUID.randomUUID().toString())
+                        .receiver(taskCollection.getAssignee().getMemberId())
+                        .content(NotificationMessages.TASK_UPDATED.getMessage(taskCollection.getTitle()))
+                        .issuedDate(new Date())
+                        .build());
+            } catch (FirebaseMessagingException e) {
+                throw new RuntimeErrorCodedException(ErrorCode.FCM_ERROR);
+            }
         }
     }
 
@@ -137,12 +148,22 @@ public class TaskService {
         teamService.deleteTeamTask(teamId,taskId);
         taskCollectionRepo.deleteById(taskId);
         if(taskCollection.getAssignee()!=null) {
-        notificationService.pushUserNotification(taskCollection.getAssignee().getMemberId(), Notification.builder()
-                .notificationId(UUID.randomUUID().toString())
-                .receiver(taskCollection.getAssignee().getMemberId())
-                .content(NotificationMessages.TASK_DELETED.getMessage(taskCollection.getTitle()))
-                .issuedDate(new Date())
-                .build());
+//        notificationService.pushUserNotification(taskCollection.getAssignee().getMemberId(), Notification.builder()
+//                .notificationId(UUID.randomUUID().toString())
+//                .receiver(taskCollection.getAssignee().getMemberId())
+//                .content(NotificationMessages.TASK_DELETED.getMessage(taskCollection.getTitle()))
+//                .issuedDate(new Date())
+//                .build());
+            try {
+                notificationService.userFCM(taskCollection.getAssignee().getMemberId(), Notification.builder()
+                        .notificationId(UUID.randomUUID().toString())
+                        .receiver(taskCollection.getAssignee().getMemberId())
+                        .content(NotificationMessages.TASK_DELETED.getMessage(taskCollection.getTitle()))
+                        .issuedDate(new Date())
+                        .build());
+            } catch (FirebaseMessagingException e) {
+                throw new RuntimeErrorCodedException(ErrorCode.FCM_ERROR);
+            }
         }
         return true;
     }

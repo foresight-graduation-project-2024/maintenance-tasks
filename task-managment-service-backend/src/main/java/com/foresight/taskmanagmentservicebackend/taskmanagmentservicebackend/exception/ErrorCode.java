@@ -10,11 +10,11 @@ public enum ErrorCode {
     DEACTIVATED_ACCOUNT(6),
     UNKNOWN_SERVER_ERROR(100),
     TEAM_NOT_FOUND_EXCEPTION(8),
-
     TASK_NOT_FOUND_EXCEPTION(9),
     MEMBER_ALREADY_EXISTS(10),
     INVALID_MEMBERS_NUMBER(11),
-    MEMBER_NOT_FOUND(12);
+    MEMBER_NOT_FOUND(12),
+    FCM_ERROR(13) ;
 
     private final int code;
     ErrorCode(int code)
