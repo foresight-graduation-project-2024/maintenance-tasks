@@ -2,12 +2,14 @@ package com.foresight.taskmanagmentservicebackend.taskmanagmentservicebackend.se
 
 import com.foresight.taskmanagmentservicebackend.taskmanagmentservicebackend.collection.TeamCollection;
 import com.foresight.taskmanagmentservicebackend.taskmanagmentservicebackend.collection.UserNotifications;
+import com.foresight.taskmanagmentservicebackend.taskmanagmentservicebackend.collection.UserRegistrationToken;
 import com.foresight.taskmanagmentservicebackend.taskmanagmentservicebackend.exception.ErrorCode;
 import com.foresight.taskmanagmentservicebackend.taskmanagmentservicebackend.exception.RuntimeErrorCodedException;
 import com.foresight.taskmanagmentservicebackend.taskmanagmentservicebackend.model.Member;
 import com.foresight.taskmanagmentservicebackend.taskmanagmentservicebackend.model.Notification;
 import com.foresight.taskmanagmentservicebackend.taskmanagmentservicebackend.repo.TeamCollectionRepo;
 import com.foresight.taskmanagmentservicebackend.taskmanagmentservicebackend.repo.UserNotificationRepo;
+import com.foresight.taskmanagmentservicebackend.taskmanagmentservicebackend.repo.UserRegistrationTokenRepo;
 import com.google.firebase.messaging.FirebaseMessaging;
 import com.google.firebase.messaging.FirebaseMessagingException;
 import com.google.firebase.messaging.Message;
@@ -22,7 +24,12 @@ import org.springframework.data.mongodb.core.aggregation.ProjectionOperation;
 import org.springframework.data.mongodb.core.aggregation.TypedAggregation;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
+import java.io.IOException;
+import java.io.OutputStream;
+import java.net.HttpURLConnection;
+import java.net.URL;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -39,6 +46,7 @@ public class NotificationService {
     private final SimpMessagingTemplate messagingTemplate;
     private TeamCollectionRepo teamCollectionRepo;
     private final FirebaseMessaging fcm;
+    private final UserRegistrationTokenRepo registrationTokenRepo;
 
     public Page<Notification> getUserNotifications(Pageable pageable, String id){
         //Sort sort = Sort.by(Sort.Direction.DESC, "issuedDate");
@@ -71,15 +79,61 @@ public class NotificationService {
         notificationRepo.save(userNotifications);
         messagingTemplate.convertAndSendToUser(userId,"/topic/private-notifications", notification);
     }
-    public void userFCM(String userId , Notification notification) throws FirebaseMessagingException {
+    @Transactional
+    public void userFCM(String userId , Notification notification,String title , String type) throws FirebaseMessagingException, IOException {
         UserNotifications userNotifications =notificationRepo.findById(userId).orElse(new UserNotifications(userId,new ArrayList<>()));
         userNotifications.getNotifications().add(notification);
         notificationRepo.save(userNotifications);
-        Message msg = Message.builder()
-                .setTopic("user-"+userId)
-                .putData("content", notification.getContent())
-                .build();
-        fcm.send(msg);
+//        notificationRepo.save(userNotifications);
+//        Message msg = Message.builder()
+//                .setTopic("user-"+userId)
+//                .putData("content", notification.getContent())
+//                .build();
+//       String response= fcm.send(msg);
+//       System.out.println("response"+response);
+        UserRegistrationToken userRegistrationTokens=registrationTokenRepo.findById(userId).orElseThrow(()->new RuntimeErrorCodedException(ErrorCode.MEMBER_NOT_FOUND));
+        sendExpoNotification(userRegistrationTokens.getTokens(),title,notification.getContent(),type);
+    }
+    public void sendExpoNotification(List<String> expoToken, String title ,String body, String type) throws IOException {
+        String url = "https://exp.host/--/api/v2/push/send";
+        HttpURLConnection conn = (HttpURLConnection) new URL(url).openConnection();
+        conn.setRequestMethod("POST");
+        conn.setRequestProperty("Content-Type", "application/json");
+        conn.setDoOutput(true);
+
+        String payload = String.format("{\"to\": \"%s\", \"title\": \"%s\", \"body\": \"%s\", \"data\": {\"notificationType\": \"%s\"}}", expoToken,title,body,type);
+        try (OutputStream os = conn.getOutputStream()) {
+            os.write(payload.getBytes("UTF-8"));
+        }
+
+        int responseCode = conn.getResponseCode();
+        System.out.println("Expo notification response code: " + responseCode);
+    }
+    @Transactional
+    public void subscribeToNotificationService(String token, String id) {
+        if (token == null || id == null) {
+            throw new RuntimeErrorCodedException(ErrorCode.FCM_ERROR);
+        }
+        UserRegistrationToken userRegistrationTokens=registrationTokenRepo.findById(id).orElse(new UserRegistrationToken());
+        if(userRegistrationTokens.getUserId()==null)
+            userRegistrationTokens.setUserId(id);
+        // Ensure the tokens list is initialized
+        if (userRegistrationTokens.getTokens() == null) {
+            userRegistrationTokens.setTokens(new ArrayList<>());
+        }
+        // Add the token if it is not already present
+        if (!userRegistrationTokens.getTokens().contains(token)) {
+            userRegistrationTokens.getTokens().add(token);
+        }
+        registrationTokenRepo.save(userRegistrationTokens);
+    }
+    @Transactional
+    public void unsubscribeToNotificationService(String token , String id) {
+        UserRegistrationToken userRegistrationTokens=registrationTokenRepo.findById(id).orElseThrow(()->new RuntimeErrorCodedException(ErrorCode.MEMBER_NOT_FOUND));
+        if (userRegistrationTokens.getTokens() != null && userRegistrationTokens.getTokens().contains(token)) {
+            userRegistrationTokens.getTokens().remove(token);
+        }
+        registrationTokenRepo.save(userRegistrationTokens);
     }
     public void pushTeamNotification(String teamId, Notification notification) {
         Optional<TeamCollection> team = teamCollectionRepo.findById(teamId);
@@ -95,6 +149,18 @@ public class NotificationService {
                 notificationRepo.saveAll(usersNotifications);
             for (Member user : team.get().getMembers())
                 messagingTemplate.convertAndSendToUser(user.getMemberId(), "/topic/private-notifications", notification);
+        }
+    }
+    @Transactional
+    public void teamFCMNotification(String teamId, Notification notification,String title,String type) throws IOException, FirebaseMessagingException {
+        Optional<TeamCollection> team = teamCollectionRepo.findById(teamId);
+        List<UserNotifications> usersNotifications = new ArrayList<>();
+        if (team.isPresent() && team.get().getMembers()!=null) {
+            for (Member user : team.get().getMembers()) {
+                userFCM(user.getMemberId(), notification,title,type);
+
+            }
+
         }
     }
     public void markNotificationsAsSeen(String userId) {

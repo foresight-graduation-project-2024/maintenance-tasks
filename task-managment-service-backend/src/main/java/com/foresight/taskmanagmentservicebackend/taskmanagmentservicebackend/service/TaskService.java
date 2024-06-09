@@ -25,6 +25,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.data.domain.Pageable;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.io.IOException;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Date;
@@ -83,9 +84,11 @@ public class TaskService {
                         .receiver(taskCollection.getAssignee().getMemberId())
                         .content(NotificationMessages.TASK_UPDATED.getMessage(taskCollection.getTitle()))
                         .issuedDate(new Date())
-                        .build());
+                        .build(),"task has been updated", "Task Update");
             } catch (FirebaseMessagingException e) {
                 throw new RuntimeErrorCodedException(ErrorCode.FCM_ERROR);
+            } catch (IOException e) {
+                throw new RuntimeException(e);
             }
         }
     }
@@ -160,9 +163,11 @@ public class TaskService {
                         .receiver(taskCollection.getAssignee().getMemberId())
                         .content(NotificationMessages.TASK_DELETED.getMessage(taskCollection.getTitle()))
                         .issuedDate(new Date())
-                        .build());
+                        .build(),"task has been deleted","Task deleted");
             } catch (FirebaseMessagingException e) {
                 throw new RuntimeErrorCodedException(ErrorCode.FCM_ERROR);
+            } catch (IOException e) {
+                throw new RuntimeException(e);
             }
         }
         return true;
