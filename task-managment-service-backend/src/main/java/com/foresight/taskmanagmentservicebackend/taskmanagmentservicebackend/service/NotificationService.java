@@ -73,12 +73,12 @@ public class NotificationService {
         return notificationRepo.findAll();
     }
 
-    public void pushUserNotification(String userId, Notification notification){
-        UserNotifications userNotifications =notificationRepo.findById(userId).orElse(new UserNotifications(userId,new ArrayList<>()));
-        userNotifications.getNotifications().add(notification);
-        notificationRepo.save(userNotifications);
-        messagingTemplate.convertAndSendToUser(userId,"/topic/private-notifications", notification);
-    }
+//    public void pushUserNotification(String userId, Notification notification){
+//        UserNotifications userNotifications =notificationRepo.findById(userId).orElse(new UserNotifications(userId,new ArrayList<>()));
+//        userNotifications.getNotifications().add(notification);
+//        notificationRepo.save(userNotifications);
+//        messagingTemplate.convertAndSendToUser(userId,"/topic/private-notifications", notification);
+//    }
     @Transactional
     public void userFCM(String userId , Notification notification,String title , String type) throws FirebaseMessagingException, IOException {
         UserNotifications userNotifications =notificationRepo.findById(userId).orElse(new UserNotifications(userId,new ArrayList<>()));
@@ -102,6 +102,7 @@ public class NotificationService {
         conn.setDoOutput(true);
 
         String payload = String.format("{\"to\": \"%s\", \"title\": \"%s\", \"body\": \"%s\", \"data\": {\"notificationType\": \"%s\"}}", expoToken,title,body,type);
+        System.out.println("payload: "+payload);
         try (OutputStream os = conn.getOutputStream()) {
             os.write(payload.getBytes("UTF-8"));
         }
@@ -135,22 +136,22 @@ public class NotificationService {
         }
         registrationTokenRepo.save(userRegistrationTokens);
     }
-    public void pushTeamNotification(String teamId, Notification notification) {
-        Optional<TeamCollection> team = teamCollectionRepo.findById(teamId);
-        List<UserNotifications> usersNotifications = new ArrayList<>();
-        if (team.isPresent() && team.get().getMembers()!=null) {
-            for (Member user : team.get().getMembers()) {
-                UserNotifications userNotifications = notificationRepo.findById(user.getMemberId()).orElse(new UserNotifications(user.getMemberId(), new ArrayList<>()));
-                userNotifications.getNotifications().add(notification);
-                usersNotifications.add(userNotifications);
-
-            }
-            if (!usersNotifications.isEmpty())
-                notificationRepo.saveAll(usersNotifications);
-            for (Member user : team.get().getMembers())
-                messagingTemplate.convertAndSendToUser(user.getMemberId(), "/topic/private-notifications", notification);
-        }
-    }
+//    public void pushTeamNotification(String teamId, Notification notification) {
+//        Optional<TeamCollection> team = teamCollectionRepo.findById(teamId);
+//        List<UserNotifications> usersNotifications = new ArrayList<>();
+//        if (team.isPresent() && team.get().getMembers()!=null) {
+//            for (Member user : team.get().getMembers()) {
+//                UserNotifications userNotifications = notificationRepo.findById(user.getMemberId()).orElse(new UserNotifications(user.getMemberId(), new ArrayList<>()));
+//                userNotifications.getNotifications().add(notification);
+//                usersNotifications.add(userNotifications);
+//
+//            }
+//            if (!usersNotifications.isEmpty())
+//                notificationRepo.saveAll(usersNotifications);
+//            for (Member user : team.get().getMembers())
+//                messagingTemplate.convertAndSendToUser(user.getMemberId(), "/topic/private-notifications", notification);
+//        }
+//    }
     @Transactional
     public void teamFCMNotification(String teamId, Notification notification,String title,String type) throws IOException, FirebaseMessagingException {
         Optional<TeamCollection> team = teamCollectionRepo.findById(teamId);

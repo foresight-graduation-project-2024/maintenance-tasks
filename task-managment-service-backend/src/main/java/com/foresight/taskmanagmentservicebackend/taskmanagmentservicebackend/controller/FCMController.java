@@ -27,27 +27,17 @@ public class FCMController {
 
     @PostMapping("/subscriptions/{userId}")
     @Transactional
-    public void createSubscription(@PathVariable("userId") String id, @RequestBody String registrationToken) throws FirebaseMessagingException, IOException {
+    public void createSubscription(@PathVariable("userId") String id, @RequestBody List<String> registrationTokens) throws FirebaseMessagingException, IOException {
         // Subscribe to the topic
-        notificationService.subscribeToNotificationService(registrationToken,id);
+        notificationService.subscribeToNotificationService(registrationTokens.get(0),id);
 
         // Check if the token is an Expo push token
-        List<String> tokens= new ArrayList<String>();
-        tokens.add(registrationToken);
-        if (registrationToken.startsWith("ExponentPushToken")) {
+        String token = registrationTokens.get(0);
+        if (token.startsWith("ExponentPushToken")) {
             // Send notification via Expo's notification service
-            notificationService.sendExpoNotification(tokens,"Subscription","Welcome to Foresight","TASK_UPDATE");
-        } else {
-            // Send notification via FCM
-            Message msg = Message.builder()
-                    .putData("notificationType", "TASK_UPDATE")
-                    .putData("title", "Subscription")
-                    .putData("body", "Welcome to Foresight")
-                    .setToken(registrationToken)
-                    .build();
-            String response = fcm.send(msg);
-            System.out.println("Successfully sent message: " + response);
-        }
+            notificationService.sendExpoNotification(registrationTokens,"Subscription","Welcome to Foresight","TASK_UPDATE");
+       }
+
     }
 
 
