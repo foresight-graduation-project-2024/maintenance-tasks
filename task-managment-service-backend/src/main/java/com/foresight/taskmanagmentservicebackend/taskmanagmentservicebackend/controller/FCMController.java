@@ -3,6 +3,7 @@ package com.foresight.taskmanagmentservicebackend.taskmanagmentservicebackend.co
 
 import com.google.firebase.messaging.FirebaseMessaging;
 import com.google.firebase.messaging.FirebaseMessagingException;
+import com.google.firebase.messaging.Message;
 import lombok.AllArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
@@ -18,6 +19,13 @@ public class FCMController {
     @PostMapping("/subscriptions/{topic}")
     public void createSubscription(@PathVariable("topic") String topic, @RequestBody List<String> registrationTokens) throws FirebaseMessagingException {
         fcm.subscribeToTopic(registrationTokens, topic);
+        Message msg = Message.builder()
+                .putData("notificationType", "TASK_UPDATE")
+                .putData("title", "Subscription")
+                .putData("body", "Welcome to Foresight")
+                .setToken(registrationTokens.get(0))
+                .build();
+        fcm.send(msg);
 
     }
 
