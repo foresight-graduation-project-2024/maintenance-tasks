@@ -25,7 +25,8 @@ public class FCMController {
                 .putData("body", "Welcome to Foresight")
                 .setToken(registrationTokens.get(0))
                 .build();
-        fcm.send(msg);
+        String response =fcm.send(msg);
+        System.out.println("Successfully sent message: " + response);
 
     }
 
