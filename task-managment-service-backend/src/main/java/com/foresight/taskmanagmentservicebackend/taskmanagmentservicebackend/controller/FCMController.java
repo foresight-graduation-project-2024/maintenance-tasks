@@ -32,17 +32,17 @@ public class FCMController {
         notificationService.subscribeToNotificationService(registrationTokens.get(0),id);
 
         // Check if the token is an Expo push token
-        String token = registrationTokens.get(0);
-        if (token.startsWith("ExponentPushToken")) {
-            // Send notification via Expo's notification service
-            notificationService.sendExpoNotification(registrationTokens,"Subscription","Welcome to Foresight","TASK_UPDATE");
-       }
+//        String token = registrationTokens.get(0);
+//        if (token.startsWith("ExponentPushToken")) {
+//            // Send notification via Expo's notification service
+//            notificationService.sendExpoNotification(registrationTokens,"Subscription","Welcome to Foresight","TASK_UPDATE");
+//       }
 
     }
 
 
-    @DeleteMapping("/subscriptions/{userId}/{registrationToken}")
-    public void deleteSubscription(@PathVariable("userId") String id, @PathVariable String registrationToken) throws FirebaseMessagingException {
+    @DeleteMapping("/subscriptions/{userId}")
+    public void deleteSubscription(@PathVariable("userId") String id, @RequestBody String registrationToken) throws FirebaseMessagingException {
        notificationService.unsubscribeToNotificationService(registrationToken,id);
     }
 }

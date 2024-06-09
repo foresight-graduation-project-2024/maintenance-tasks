@@ -50,12 +50,12 @@ public class TeamService {
             //adding team leader to user table
             userService.addOrUpdateTeamLeader(team);
             taskSequenceRepo.save(new TaskSequence(team.getTeamId(), 1L));
-            notificationService.teamFCMNotification(team.getTeamId(), Notification.builder()
+            notificationService.pushTeamNotification(team.getTeamId(), Notification.builder()
                     .notificationId(UUID.randomUUID().toString())
                     .receiver(team.getTeamId())
                     .content(NotificationMessages.TEAM_CREATED.getMessage("Technical Manager"))
                     .issuedDate(new Date())
-                    .build(),"Welcome to "+team.getName(),"Team Created");
+                    .build());
         }catch (Exception e){
             throw new RuntimeErrorCodedException(ErrorCode.UNKNOWN_SERVER_ERROR);
         }
