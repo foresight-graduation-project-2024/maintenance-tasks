@@ -91,8 +91,10 @@ public class NotificationService {
 //                .build();
 //       String response= fcm.send(msg);
 //       System.out.println("response"+response);
-        UserRegistrationToken userRegistrationTokens=registrationTokenRepo.findById(userId).orElseThrow(()->new RuntimeErrorCodedException(ErrorCode.MEMBER_NOT_FOUND));
-        sendExpoNotification(userRegistrationTokens.getTokens(),title,notification.getContent(),type);
+        UserRegistrationToken userRegistrationTokens=registrationTokenRepo.findById(userId).orElse(null);
+        if(userRegistrationTokens!= null) {
+            sendExpoNotification(userRegistrationTokens.getTokens(), title, notification.getContent(), type);
+        }
     }
 
 
